@@ -34,6 +34,7 @@ export const PERCENTAGE_SIG_DIGITS = 4;
 export const SRA_PATH = '/sra/v3';
 export const STAKING_PATH = '/staking';
 export const SWAP_PATH = '/swap/v0';
+export const META_TRANSACTION_PATH = '/meta/v0';
 
 // Docs
 export const SWAP_DOCS_URL = 'https://0x.org/docs/api#swap';
