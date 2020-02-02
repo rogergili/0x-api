@@ -1,44 +1,22 @@
 import {
-    ERC20BridgeSource,
     ExtensionContractType,
-    MarketBuySwapQuote,
-    MarketSellSwapQuote,
     Orderbook,
-    SignedOrder,
     SwapQuoteConsumer,
-    SwapQuoteOrdersBreakdown,
     SwapQuoter,
     SwapQuoterOpts,
 } from '@0x/asset-swapper';
-import { assetDataUtils, SupportedProvider } from '@0x/order-utils';
-import { AbiEncoder, BigNumber, decodeThrownErrorAsRevertError, RevertError } from '@0x/utils';
+import { SupportedProvider } from '@0x/order-utils';
+import { BigNumber, decodeThrownErrorAsRevertError, RevertError } from '@0x/utils';
 import { TxData, Web3Wrapper } from '@0x/web3-wrapper';
 import * as _ from 'lodash';
 
-import {
-    ASSET_SWAPPER_MARKET_ORDERS_OPTS,
-    CHAIN_ID,
-    FEE_RECIPIENT_ADDRESS,
-    LIQUIDITY_POOL_REGISTRY_ADDRESS,
-} from '../config';
-import {
-    DEFAULT_TOKEN_DECIMALS,
-    GAS_LIMIT_BUFFER_PERCENTAGE,
-    ONE_SECOND_MS,
-    PERCENTAGE_SIG_DIGITS,
-    QUOTE_ORDER_EXPIRATION_BUFFER_MS,
-} from '../constants';
-import { logger } from '../logger';
+import { ASSET_SWAPPER_MARKET_ORDERS_OPTS, CHAIN_ID, LIQUIDITY_POOL_REGISTRY_ADDRESS } from '../config';
+import { GAS_LIMIT_BUFFER_PERCENTAGE, QUOTE_ORDER_EXPIRATION_BUFFER_MS } from '../constants';
 import { TokenMetadatasForChains } from '../token_metadatas_for_networks';
-import {
-    CalculateSwapQuoteParams,
-    GetSwapQuoteResponse,
-    GetSwapQuoteResponseLiquiditySource,
-    GetTokenPricesResponse,
+import { CalculateSwapQuoteParams, GetSwapQuoteResponse,     GetTokenPricesResponse,
     TokenMetadata,
-} from '../types';
-import { orderUtils } from '../utils/order_utils';
-import { findTokenDecimalsIfExists } from '../utils/token_metadata_utils';
+ } from '../types';
+import { serviceUtils } from '../utils/service_utils';
 
 export class SwapService {
     private readonly _provider: SupportedProvider;
@@ -94,7 +72,7 @@ export class SwapService {
         } else {
             throw new Error('sellAmount or buyAmount required');
         }
-        const attributedSwapQuote = this._attributeSwapQuoteOrders(swapQuote);
+        const attributedSwapQuote = serviceUtils.attributeSwapQuoteOrders(swapQuote);
         const {
             makerAssetAmount,
             totalTakerAssetAmount,
@@ -117,7 +95,7 @@ export class SwapService {
             useExtensionContract: extensionContractType,
         });
 
-        const affiliatedData = this._attributeCallData(data, affiliateAddress);
+        const affiliatedData = serviceUtils.attributeCallData(data, affiliateAddress);
 
         let suggestedGasEstimate = new BigNumber(gas);
         if (from) {
@@ -139,8 +117,8 @@ export class SwapService {
         // Add a buffer to the gas estimate
         suggestedGasEstimate = suggestedGasEstimate.times(GAS_LIMIT_BUFFER_PERCENTAGE + 1).integerValue();
 
-        const buyTokenDecimals = await this._fetchTokenDecimalsIfRequiredAsync(buyTokenAddress);
-        const sellTokenDecimals = await this._fetchTokenDecimalsIfRequiredAsync(sellTokenAddress);
+        const buyTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(buyTokenAddress, this._web3Wrapper);
+        const sellTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(sellTokenAddress, this._web3Wrapper);
         const unitMakerAssetAmount = Web3Wrapper.toUnitAmount(makerAssetAmount, buyTokenDecimals);
         const unitTakerAssetAMount = Web3Wrapper.toUnitAmount(totalTakerAssetAmount, sellTokenDecimals);
         // Best price
@@ -177,8 +155,8 @@ export class SwapService {
             sellTokenAddress,
             buyAmount: makerAssetAmount,
             sellAmount: totalTakerAssetAmount,
-            sources: this._convertSourceBreakdownToArray(sourceBreakdown),
-            orders: this._cleanSignedOrderFields(orders),
+            sources: serviceUtils.convertSourceBreakdownToArray(sourceBreakdown),
+            orders: serviceUtils.cleanSignedOrderFields(orders),
         };
         return apiSwapQuote;
     }
@@ -233,24 +211,6 @@ export class SwapService {
             .filter(p => p) as GetTokenPricesResponse;
         return prices;
     }
-    // tslint:disable-next-line: prefer-function-over-method
-    private _convertSourceBreakdownToArray(
-        sourceBreakdown: SwapQuoteOrdersBreakdown,
-    ): GetSwapQuoteResponseLiquiditySource[] {
-        const breakdown: GetSwapQuoteResponseLiquiditySource[] = [];
-        return Object.entries(sourceBreakdown).reduce(
-            (acc: GetSwapQuoteResponseLiquiditySource[], [source, percentage]) => {
-                return [
-                    ...acc,
-                    {
-                        name: source === ERC20BridgeSource.Native ? '0x' : source,
-                        proportion: new BigNumber(percentage.toPrecision(PERCENTAGE_SIG_DIGITS)),
-                    },
-                ];
-            },
-            breakdown,
-        );
-    }
     private async _estimateGasOrThrowRevertErrorAsync(txData: Partial<TxData>): Promise<BigNumber> {
         // Perform this concurrently
         // if the call fails the gas estimation will also fail, we can throw a more helpful
@@ -261,98 +221,6 @@ export class SwapService {
         return new BigNumber(gas);
     }
 
-    // tslint:disable-next-line:prefer-function-over-method
-    private _attributeSwapQuoteOrders(
-        swapQuote: MarketSellSwapQuote | MarketBuySwapQuote,
-    ): MarketSellSwapQuote | MarketBuySwapQuote {
-        // Where possible, attribute any fills of these orders to the Fee Recipient Address
-        const attributedOrders = swapQuote.orders.map(o => {
-            try {
-                const decodedAssetData = assetDataUtils.decodeAssetDataOrThrow(o.makerAssetData);
-                if (orderUtils.isBridgeAssetData(decodedAssetData)) {
-                    return {
-                        ...o,
-                        feeRecipientAddress: FEE_RECIPIENT_ADDRESS,
-                    };
-                }
-                // tslint:disable-next-line:no-empty
-            } catch (err) {}
-            // Default to unmodified order
-            return o;
-        });
-        const attributedSwapQuote = {
-            ...swapQuote,
-            orders: attributedOrders,
-        };
-        return attributedSwapQuote;
-    }
-
-    // tslint:disable-next-line:prefer-function-over-method
-    private _attributeCallData(data: string, affiliateAddress?: string): string {
-        const affiliateAddressOrDefault = affiliateAddress ? affiliateAddress : FEE_RECIPIENT_ADDRESS;
-        const affiliateCallDataEncoder = new AbiEncoder.Method({
-            constant: true,
-            outputs: [],
-            name: 'ZeroExAPIAffiliate',
-            inputs: [{ name: 'affiliate', type: 'address' }, { name: 'timestamp', type: 'uint256' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-        });
-        const timestamp = new BigNumber(Date.now() / ONE_SECOND_MS).integerValue();
-        const encodedAffiliateData = affiliateCallDataEncoder.encode([affiliateAddressOrDefault, timestamp]);
-        const affiliatedData = `${data}${encodedAffiliateData.slice(2)}`;
-        return affiliatedData;
-    }
-
-    // tslint:disable-next-line:prefer-function-over-method
-    private _cleanSignedOrderFields(orders: SignedOrder[]): SignedOrder[] {
-        return orders.map(o => ({
-            chainId: o.chainId,
-            exchangeAddress: o.exchangeAddress,
-            makerAddress: o.makerAddress,
-            takerAddress: o.takerAddress,
-            feeRecipientAddress: o.feeRecipientAddress,
-            senderAddress: o.senderAddress,
-            makerAssetAmount: o.makerAssetAmount,
-            takerAssetAmount: o.takerAssetAmount,
-            makerFee: o.makerFee,
-            takerFee: o.takerFee,
-            expirationTimeSeconds: o.expirationTimeSeconds,
-            salt: o.salt,
-            makerAssetData: o.makerAssetData,
-            takerAssetData: o.takerAssetData,
-            makerFeeAssetData: o.makerFeeAssetData,
-            takerFeeAssetData: o.takerFeeAssetData,
-            signature: o.signature,
-        }));
-    }
-    private async _fetchTokenDecimalsIfRequiredAsync(tokenAddress: string): Promise<number> {
-        // HACK(dekz): Our ERC20Wrapper does not have decimals as it is optional
-        // so we must encode this ourselves
-        let decimals = findTokenDecimalsIfExists(tokenAddress, CHAIN_ID);
-        if (!decimals) {
-            const decimalsEncoder = new AbiEncoder.Method({
-                constant: true,
-                inputs: [],
-                name: 'decimals',
-                outputs: [{ name: '', type: 'uint8' }],
-                payable: false,
-                stateMutability: 'view',
-                type: 'function',
-            });
-            const encodedCallData = decimalsEncoder.encode(tokenAddress);
-            try {
-                const result = await this._web3Wrapper.callAsync({ data: encodedCallData, to: tokenAddress });
-                decimals = decimalsEncoder.strictDecodeReturnValue<BigNumber>(result).toNumber();
-                logger.info(`Unmapped token decimals ${tokenAddress} ${decimals}`);
-            } catch (err) {
-                logger.error(`Error fetching token decimals ${tokenAddress}`);
-                decimals = DEFAULT_TOKEN_DECIMALS;
-            }
-        }
-        return decimals;
-    }
     private async _throwIfCallIsRevertErrorAsync(txData: Partial<TxData>): Promise<void> {
         let callResult;
         let revertError;
