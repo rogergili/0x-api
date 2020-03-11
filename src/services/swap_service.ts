@@ -1,6 +1,7 @@
 import {
     ERC20BridgeSource,
     ExtensionContractType,
+    ISwapQuoter,
     MarketBuySwapQuote,
     MarketSellSwapQuote,
     Orderbook,
@@ -42,17 +43,17 @@ import { findTokenDecimalsIfExists } from '../utils/token_metadata_utils';
 
 export class SwapService {
     private readonly _provider: SupportedProvider;
-    private readonly _swapQuoter: SwapQuoter;
+    private readonly _swapQuoter: ISwapQuoter;
     private readonly _swapQuoteConsumer: SwapQuoteConsumer;
     private readonly _web3Wrapper: Web3Wrapper;
-    constructor(orderbook: Orderbook, provider: SupportedProvider) {
+    constructor(orderbook: Orderbook, provider: SupportedProvider, swapQuoter?: ISwapQuoter) {
         this._provider = provider;
         const swapQuoterOpts: Partial<SwapQuoterOpts> = {
             chainId: CHAIN_ID,
             expiryBufferMs: QUOTE_ORDER_EXPIRATION_BUFFER_MS,
             liquidityProviderRegistryAddress: LIQUIDITY_POOL_REGISTRY_ADDRESS,
         };
-        this._swapQuoter = new SwapQuoter(this._provider, orderbook, swapQuoterOpts);
+        this._swapQuoter = swapQuoter || new SwapQuoter(this._provider, orderbook, swapQuoterOpts);
         this._swapQuoteConsumer = new SwapQuoteConsumer(this._provider, swapQuoterOpts);
         this._web3Wrapper = new Web3Wrapper(this._provider);
     }

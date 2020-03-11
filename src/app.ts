@@ -1,4 +1,4 @@
-import { Orderbook, SupportedProvider } from '@0x/asset-swapper';
+import { ISwapQuoter, Orderbook, SupportedProvider } from '@0x/asset-swapper';
 import * as express from 'express';
 import { Connection } from 'typeorm';
 
@@ -38,6 +38,7 @@ export async function getDefaultAppDependenciesAsync(
         MESH_WEBSOCKET_URI?: string;
         MESH_HTTP_URI?: string;
     },
+    swapQuoter?: ISwapQuoter,
 ): Promise<AppDependencies> {
     const connection = await getDBConnectionAsync();
     const stakingDataService = new StakingDataService(connection);
@@ -53,7 +54,7 @@ export async function getDefaultAppDependenciesAsync(
 
     let swapService: SwapService | undefined;
     try {
-        swapService = createSwapServiceFromOrderBookService(orderBookService, provider);
+        swapService = createSwapServiceFromOrderBookService(orderBookService, provider, swapQuoter);
     } catch (err) {
         logger.error(err);
     }
@@ -98,9 +99,11 @@ export async function getAppAsync(
 function createSwapServiceFromOrderBookService(
     orderBookService: OrderBookService,
     provider: SupportedProvider,
+    swapQuoter?: ISwapQuoter,
+
 ): SwapService {
     const orderStore = new OrderStoreDbAdapter(orderBookService);
     const orderProvider = new OrderBookServiceOrderProvider(orderStore, orderBookService);
     const orderBook = new Orderbook(orderProvider, orderStore);
-    return new SwapService(orderBook, provider);
+    return new SwapService(orderBook, provider, swapQuoter);
 }
