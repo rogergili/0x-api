@@ -21,6 +21,8 @@ import {
     CHAIN_ID,
     FEE_RECIPIENT_ADDRESS,
     LIQUIDITY_POOL_REGISTRY_ADDRESS,
+    RFQT_API_KEY_WHITELIST,
+    RFQT_MAKER_ENDPOINTS,
 } from '../config';
 import {
     DEFAULT_TOKEN_DECIMALS,
@@ -52,6 +54,8 @@ export class SwapService {
             chainId: CHAIN_ID,
             expiryBufferMs: QUOTE_ORDER_EXPIRATION_BUFFER_MS,
             liquidityProviderRegistryAddress: LIQUIDITY_POOL_REGISTRY_ADDRESS,
+            rfqtTakerApiKeyWhitelist: RFQT_API_KEY_WHITELIST,
+            rfqtMakerEndpoints: RFQT_MAKER_ENDPOINTS,
         };
         this._swapQuoter = swapQuoter || new SwapQuoter(this._provider, orderbook, swapQuoterOpts);
         this._swapQuoteConsumer = new SwapQuoteConsumer(this._provider, swapQuoterOpts);
@@ -70,6 +74,8 @@ export class SwapService {
             from,
             excludedSources,
             affiliateAddress,
+            apiKey,
+            intentOnFilling,
         } = params;
         const assetSwapperOpts = {
             ...ASSET_SWAPPER_MARKET_ORDERS_OPTS,
@@ -77,6 +83,9 @@ export class SwapService {
             bridgeSlippage: slippagePercentage,
             gasPrice: providedGasPrice,
             excludedSources, // TODO(dave4506): overrides the excluded sources selected by chainId
+            apiKey,
+            intentOnFilling,
+            takerAddress: from,
         };
         if (sellAmount !== undefined) {
             swapQuote = await this._swapQuoter.getMarketSellSwapQuoteAsync(
