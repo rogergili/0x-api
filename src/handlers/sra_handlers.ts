@@ -1,5 +1,6 @@
 import { schemas } from '@0x/json-schemas';
 import { assetDataUtils, SignedOrder } from '@0x/order-utils';
+import { OrdersRequestOpts } from '@0x/types';
 import { BigNumber } from '@0x/utils';
 import * as express from 'express';
 import * as HttpStatus from 'http-status-codes';
@@ -40,8 +41,8 @@ export class SRAHandlers {
         const assetPairs = await this._orderBook.getAssetPairsAsync(
             page,
             perPage,
-            req.query.assetDataA,
-            req.query.assetDataB,
+            req.query.assetDataA.toLowerCase(),
+            req.query.assetDataB.toLowerCase(),
         );
         res.status(HttpStatus.OK).send(assetPairs);
     }
@@ -55,8 +56,9 @@ export class SRAHandlers {
     }
     public async ordersAsync(req: express.Request, res: express.Response): Promise<void> {
         schemaUtils.validateSchema(req.query, schemas.ordersRequestOptsSchema);
+        const ordersRequestOpts = parseGetOrdersRequestParams(req);
         const { page, perPage } = paginationUtils.parsePaginationConfig(req);
-        const paginatedOrders = await this._orderBook.getOrdersAsync(page, perPage, req.query);
+        const paginatedOrders = await this._orderBook.getOrdersAsync(page, perPage, ordersRequestOpts);
         res.status(HttpStatus.OK).send(paginatedOrders);
     }
     public async orderbookAsync(req: express.Request, res: express.Response): Promise<void> {
@@ -131,4 +133,19 @@ function unmarshallOrders(signedOrdersRaw: any[]): SignedOrder[] {
     return signedOrdersRaw.map(signedOrderRaw => {
         return unmarshallOrder(signedOrderRaw);
     });
+}
+
+function parseGetOrdersRequestParams(req: express.Request): OrdersRequestOpts {
+    schemaUtils.validateSchema(req.query, schemas.ordersRequestOptsSchema);
+    return {
+        ...req.query,
+        makerAssetAddress: req.query.makerAssetAddress.toLowerCase(),
+        takerAssetAddress: req.query.takerAssetAddress.toLowerCase(),
+        exchangeAddress: req.query.exchangeAddress.toLowerCase(),
+        senderAddress: req.query.senderAddress.toLowerCase(),
+        makerAddress: req.query.makerAddress.toLowerCase(),
+        takerAddress: req.query.takerAddress.toLowerCase(),
+        traderAddress: req.query.traderAddress.toLowerCase(),
+        feeRecipientAddress: req.query.feeRecipientAddress.toLowerCase(),
+    };
 }
