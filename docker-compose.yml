@@ -1,5 +1,9 @@
 version: '3'
 services:
+    ganache:
+        image: "0xorg/ganache-cli:6.0.0"
+        ports:
+            - "8545:8545"
     postgres:
         image: postgres:9.6
         environment:
@@ -18,7 +22,7 @@ services:
             - ganache
         restart: on-failure
         environment:
-            ETHEREUM_RPC_URL: https://eth-mainnet.alchemyapi.io/jsonrpc/c1E499RydMYomEDkYpJscgE1YXiDV619
+            ETHEREUM_RPC_URL: '${ETHEREUM_RPC_URL}'
             ETHEREUM_CHAIN_ID: '${CHAIN_ID}'
             USE_BOOTSTRAP_LIST: 'true'
             VERBOSITY: 3
@@ -34,3 +38,5 @@ services:
             - '60557:60557'
             - '60558:60558'
             - '60559:60559'
+        command: |
+            sh -c "waitForGanache () { until printf 'POST /\r\nContent-Length: 26\r\n\r\n{\"method\":\"net_listening\"}' | nc localhost 8545 | grep true; do continue; done }; waitForGanache && ./mesh"
