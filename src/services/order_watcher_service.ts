@@ -25,7 +25,14 @@ export class OrderWatcherService {
         // cannot validate the order we cannot keep the order around
         // Mesh websocket fails if there are too many orders, so we use HTTP instead
         // Validate the local state and notify the order watcher of any missed orders
-        const { accepted, rejected } = await this._meshClient.addOrdersAsync(signedOrders);
+        const pinResult = await orderUtils.splitOrdersByPinningAsync(this._connection, signedOrders);
+        const [pinnedValidationResults, unpinnedValidationResults] = await Promise.all([
+            this._meshClient.addOrdersAsync(pinResult.pin, true),
+            this._meshClient.addOrdersAsync(pinResult.doNotPin, false),
+        ]);
+        const accepted = [...pinnedValidationResults.accepted, ...unpinnedValidationResults.accepted];
+        const rejected = [...pinnedValidationResults.rejected, ...unpinnedValidationResults.rejected];
+
         logger.info('OrderWatcherService sync', {
             accepted: accepted.length,
             rejected: rejected.length,
