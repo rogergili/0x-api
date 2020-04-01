@@ -1,10 +1,4 @@
-import {
-    ExtensionContractType,
-    Orderbook,
-    SwapQuoteConsumer,
-    SwapQuoter,
-    SwapQuoterOpts,
-} from '@0x/asset-swapper';
+import { ExtensionContractType, Orderbook, SwapQuoteConsumer, SwapQuoter, SwapQuoterOpts } from '@0x/asset-swapper';
 import { assetDataUtils, SupportedProvider } from '@0x/order-utils';
 import { BigNumber, decodeThrownErrorAsRevertError, RevertError } from '@0x/utils';
 import { TxData, Web3Wrapper } from '@0x/web3-wrapper';
@@ -13,9 +7,7 @@ import * as _ from 'lodash';
 import { ASSET_SWAPPER_MARKET_ORDERS_OPTS, CHAIN_ID, LIQUIDITY_POOL_REGISTRY_ADDRESS } from '../config';
 import { GAS_LIMIT_BUFFER_PERCENTAGE, QUOTE_ORDER_EXPIRATION_BUFFER_MS } from '../constants';
 import { TokenMetadatasForChains } from '../token_metadatas_for_networks';
-import { CalculateSwapQuoteParams, GetSwapQuoteResponse,     GetTokenPricesResponse,
-    TokenMetadata,
- } from '../types';
+import { CalculateSwapQuoteParams, GetSwapQuoteResponse, GetTokenPricesResponse, TokenMetadata } from '../types';
 import { serviceUtils } from '../utils/service_utils';
 
 export class SwapService {
@@ -117,8 +109,14 @@ export class SwapService {
         // Add a buffer to the gas estimate
         suggestedGasEstimate = suggestedGasEstimate.times(GAS_LIMIT_BUFFER_PERCENTAGE + 1).integerValue();
 
-        const buyTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(buyTokenAddress, this._web3Wrapper);
-        const sellTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(sellTokenAddress, this._web3Wrapper);
+        const buyTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(
+            buyTokenAddress,
+            this._web3Wrapper,
+        );
+        const sellTokenDecimals = await serviceUtils.fetchTokenDecimalsIfRequiredAsync(
+            sellTokenAddress,
+            this._web3Wrapper,
+        );
         const unitMakerAssetAmount = Web3Wrapper.toUnitAmount(makerAssetAmount, buyTokenDecimals);
         const unitTakerAssetAMount = Web3Wrapper.toUnitAmount(totalTakerAssetAmount, sellTokenDecimals);
         // Best price

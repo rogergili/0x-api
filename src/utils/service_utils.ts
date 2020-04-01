@@ -82,7 +82,7 @@ export const serviceUtils = {
         }));
     },
 
-    async fetchTokenDecimalsIfRequiredAsync(tokenAddress: string,  web3Wrapper: Web3Wrapper): Promise<number> {
+    async fetchTokenDecimalsIfRequiredAsync(tokenAddress: string, web3Wrapper: Web3Wrapper): Promise<number> {
         // HACK(dekz): Our ERC20Wrapper does not have decimals as it is optional
         // so we must encode this ourselves
         let decimals = findTokenDecimalsIfExists(tokenAddress, CHAIN_ID);
@@ -109,9 +109,7 @@ export const serviceUtils = {
         return decimals;
     },
 
-    convertSourceBreakdownToArray(
-        sourceBreakdown: SwapQuoteOrdersBreakdown,
-    ): GetSwapQuoteResponseLiquiditySource[] {
+    convertSourceBreakdownToArray(sourceBreakdown: SwapQuoteOrdersBreakdown): GetSwapQuoteResponseLiquiditySource[] {
         const breakdown: GetSwapQuoteResponseLiquiditySource[] = [];
         return Object.entries(sourceBreakdown).reduce(
             (acc: GetSwapQuoteResponseLiquiditySource[], [source, percentage]) => {
