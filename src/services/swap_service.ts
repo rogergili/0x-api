@@ -5,7 +5,7 @@ import {
     SwapQuoter,
     SwapQuoterOpts,
 } from '@0x/asset-swapper';
-import { SupportedProvider } from '@0x/order-utils';
+import { assetDataUtils, SupportedProvider } from '@0x/order-utils';
 import { BigNumber, decodeThrownErrorAsRevertError, RevertError } from '@0x/utils';
 import { TxData, Web3Wrapper } from '@0x/web3-wrapper';
 import * as _ from 'lodash';
