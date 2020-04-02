@@ -25,6 +25,8 @@ enum EnvVarType {
     WhitelistAllTokens,
     Boolean,
     FeeAssetData,
+    NonEmptyString,
+    String,
 }
 
 // Network port to listen on
@@ -99,6 +101,24 @@ export const LIQUIDITY_POOL_REGISTRY_ADDRESS: string | undefined = _.isEmpty(
           process.env.LIQUIDITY_POOL_REGISTRY_ADDRESS,
           EnvVarType.ETHAddressHex,
       );
+
+// The meta-txn relay sender address
+export const SENDER_ADDRESS = _.isEmpty(process.env.SENDER_ADDRESS)
+    ? NULL_ADDRESS
+    : assertEnvVarType('SENDER_ADDRESS', process.env.SENDER_ADDRESS, EnvVarType.ETHAddressHex);
+
+// The meta-txn relay sender private key
+export const SENDER_PRIVATE_KEY = assertEnvVarType('SENDER_PRIVATE_KEY', process.env.SENDER_PRIVATE_KEY, EnvVarType.NonEmptyString);
+
+// The meta-txn runner test example taker address
+export const TAKER_ADDRESS = _.isEmpty(process.env.TAKER_ADDRESS)
+    ? NULL_ADDRESS
+    : assertEnvVarType('TAKER_ADDRESS', process.env.TAKER_ADDRESS, EnvVarType.ETHAddressHex);
+
+// The meta-txn runner test example taker private key
+export const TAKER_PRIVATE_KEY = _.isEmpty(process.env.TAKER_PRIVATE_KEY)
+? '' // optional
+: assertEnvVarType('TAKER_PRIVATE_KEY', process.env.TAKER_PRIVATE_KEY, EnvVarType.String);
 
 // Max number of entities per page
 export const MAX_PER_PAGE = 1000;
@@ -193,6 +213,15 @@ function assertEnvVarType(name: string, value: any, expectedType: EnvVarType): a
             return '*';
         case EnvVarType.FeeAssetData:
             assert.isString(name, value);
+            return value;
+        case EnvVarType.String:
+            assert.isString(name, value);
+            return value;
+        case EnvVarType.NonEmptyString:
+            assert.isString(name, value);
+            if (value === '') {
+                throw new Error(`${name} must be supplied`);
+            }
             return value;
         default:
             throw new Error(`Unrecognised EnvVarType: ${expectedType} encountered for variable ${name}.`);
