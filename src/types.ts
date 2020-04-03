@@ -396,6 +396,7 @@ export interface GetTransactionRequestParams {
     sellAmount?: BigNumber;
     buyAmount?: BigNumber;
     slippagePercentage?: number;
+    excludedSources?: ERC20BridgeSource[];
 }
 
 export interface CalculateSwapQuoteParams {
@@ -424,4 +425,5 @@ export interface CalculateMetaTransactionQuoteParams {
     sellAmount: BigNumber | undefined;
     from: string | undefined;
     slippagePercentage?: number;
+    excludedSources?: ERC20BridgeSource[];
 }
