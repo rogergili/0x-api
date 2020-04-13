@@ -5,7 +5,7 @@
 .vscode
 
 # dotenv environment variables file
-.env
+#.env
 
 # Generated metadata file
 metadata.json
@@ -82,3 +82,4 @@ db/database.sqlite
 postgres
 
 TODO.txt
+backend.iml
